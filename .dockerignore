@@ -1,0 +1,11 @@
+node_modules
+ui/node_modules
+dist
+data
+.git
+test
+*.test.ts
+vitest.config.ts
+.prettierrc
+eslint.config.js
+CLAUDE.md

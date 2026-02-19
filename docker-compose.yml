@@ -1,0 +1,26 @@
+services:
+  f12mqtt:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - f12mqtt-data:/data
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto-data:/mosquitto/data
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+volumes:
+  f12mqtt-data:
+  mosquitto-data:
