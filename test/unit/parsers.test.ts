@@ -7,6 +7,9 @@ import {
   parseSessionInfo,
   parseLapCount,
   parseWeatherData,
+  parsePitLaneTimeCollection,
+  parseTopThree,
+  parseRaceControlMessages,
 } from '../../src/signalr/parsers.js';
 
 describe('parseTrackStatus', () => {
@@ -95,7 +98,7 @@ describe('parseDriverList', () => {
       },
     };
     const result = parseDriverList(raw);
-    expect(result['4']?.teamColor).toBe('FF8000');
+    expect(result['4']?.teamColor).toBe('F47600');
   });
 
   it('uses driver number key when RacingNumber missing', () => {
@@ -344,5 +347,243 @@ describe('parseWeatherData', () => {
     const result = parseWeatherData({ AirTemp: '30.0' });
     expect(result.airTemp).toBe(30.0);
     expect(result.rainfall).toBeUndefined();
+  });
+});
+
+describe('parsePitLaneTimeCollection', () => {
+  it('parses a single pit time entry', () => {
+    const raw = {
+      PitTimes: {
+        '12': { RacingNumber: '12', Duration: '25.3', Lap: '15' },
+      },
+    };
+    const result = parsePitLaneTimeCollection(raw);
+    expect(result['12']).toEqual({
+      driverNumber: '12',
+      duration: '25.3',
+      lap: '15',
+    });
+  });
+
+  it('parses multiple entries', () => {
+    const raw = {
+      PitTimes: {
+        '12': { RacingNumber: '12', Duration: '25.3', Lap: '15' },
+        '44': { RacingNumber: '44', Duration: '23.1', Lap: '22' },
+      },
+    };
+    const result = parsePitLaneTimeCollection(raw);
+    expect(Object.keys(result)).toHaveLength(2);
+    expect(result['12']?.duration).toBe('25.3');
+    expect(result['44']?.duration).toBe('23.1');
+  });
+
+  it('handles empty/missing PitTimes', () => {
+    expect(parsePitLaneTimeCollection({})).toEqual({});
+    expect(parsePitLaneTimeCollection({ PitTimes: {} })).toEqual({});
+  });
+
+  it('handles entries with missing fields', () => {
+    const raw = {
+      PitTimes: {
+        '12': { Duration: '25.3' },
+        '44': { RacingNumber: '44' },
+      },
+    };
+    const result = parsePitLaneTimeCollection(raw);
+    // Entry '12' should use the key as driverNumber since RacingNumber is missing
+    expect(result['12']).toEqual({
+      driverNumber: '12',
+      duration: '25.3',
+      lap: '',
+    });
+    // Entry '44' should be skipped because Duration is missing
+    expect(result['44']).toBeUndefined();
+  });
+});
+
+describe('parseTopThree', () => {
+  it('parses 3 entries from the Lines array', () => {
+    const raw = {
+      Lines: [
+        {
+          Position: '1',
+          RacingNumber: '12',
+          Tla: 'ANT',
+          TeamColour: '00D7B6',
+          LapTime: '1:32.803',
+          DiffToLeader: '',
+        },
+        {
+          Position: '2',
+          RacingNumber: '81',
+          Tla: 'PIA',
+          TeamColour: 'F47600',
+          LapTime: '1:32.861',
+          DiffToLeader: '+0.058',
+        },
+        {
+          Position: '3',
+          RacingNumber: '1',
+          Tla: 'VER',
+          TeamColour: '3671C6',
+          LapTime: '1:33.100',
+          DiffToLeader: '+0.297',
+        },
+      ],
+      Withheld: false,
+    };
+    const result = parseTopThree(raw);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({
+      position: 1,
+      driverNumber: '12',
+      abbreviation: 'ANT',
+      teamColor: '00D7B6',
+      lapTime: '1:32.803',
+      gapToLeader: '',
+    });
+    expect(result[1]).toEqual({
+      position: 2,
+      driverNumber: '81',
+      abbreviation: 'PIA',
+      teamColor: 'F47600',
+      lapTime: '1:32.861',
+      gapToLeader: '+0.058',
+    });
+    expect(result[2]).toEqual({
+      position: 3,
+      driverNumber: '1',
+      abbreviation: 'VER',
+      teamColor: '3671C6',
+      lapTime: '1:33.100',
+      gapToLeader: '+0.297',
+    });
+  });
+
+  it('returns empty array when Withheld is true', () => {
+    const raw = {
+      Lines: [
+        { Position: '1', RacingNumber: '12', Tla: 'ANT', TeamColour: '00D7B6' },
+      ],
+      Withheld: true,
+    };
+    const result = parseTopThree(raw);
+    expect(result).toEqual([]);
+  });
+
+  it('handles missing/empty Lines', () => {
+    expect(parseTopThree({})).toEqual([]);
+    expect(parseTopThree({ Lines: [] })).toEqual([]);
+  });
+
+  it('sorts entries by position', () => {
+    const raw = {
+      Lines: [
+        { Position: '3', RacingNumber: '1', Tla: 'VER', TeamColour: '3671C6' },
+        { Position: '1', RacingNumber: '12', Tla: 'ANT', TeamColour: '00D7B6' },
+        { Position: '2', RacingNumber: '81', Tla: 'PIA', TeamColour: 'F47600' },
+      ],
+    };
+    const result = parseTopThree(raw);
+    expect(result[0]?.position).toBe(1);
+    expect(result[1]?.position).toBe(2);
+    expect(result[2]?.position).toBe(3);
+  });
+});
+
+describe('parseRaceControlMessages', () => {
+  it('parses a message with Flag and Scope: "Track"', () => {
+    const raw = {
+      Messages: {
+        '0': {
+          Utc: '2025-05-25T13:00:00Z',
+          Message: 'RED FLAG',
+          Category: 'Flag',
+          Flag: 'RED',
+          Scope: 'Track',
+        },
+      },
+    };
+    const result = parseRaceControlMessages(raw);
+    expect(result).toEqual({
+      utc: '2025-05-25T13:00:00Z',
+      message: 'RED FLAG',
+      category: 'Flag',
+      flag: 'RED',
+      scope: 'Track',
+      sector: undefined,
+      racingNumber: undefined,
+    });
+  });
+
+  it('parses a message with Scope: "Sector" and Sector number', () => {
+    const raw = {
+      Messages: {
+        '0': {
+          Utc: '2025-05-25T13:05:00Z',
+          Message: 'YELLOW IN TRACK SECTOR 2',
+          Category: 'Flag',
+          Flag: 'YELLOW',
+          Scope: 'Sector',
+          Sector: 2,
+        },
+      },
+    };
+    const result = parseRaceControlMessages(raw);
+    expect(result).toEqual({
+      utc: '2025-05-25T13:05:00Z',
+      message: 'YELLOW IN TRACK SECTOR 2',
+      category: 'Flag',
+      flag: 'YELLOW',
+      scope: 'Sector',
+      sector: 2,
+      racingNumber: undefined,
+    });
+  });
+
+  it('returns the latest message (highest key) when multiple', () => {
+    const raw = {
+      Messages: {
+        '0': {
+          Utc: '2025-05-25T13:00:00Z',
+          Message: 'GREEN FLAG',
+          Category: 'Flag',
+          Flag: 'GREEN',
+        },
+        '1': {
+          Utc: '2025-05-25T13:05:00Z',
+          Message: 'RED FLAG',
+          Category: 'Flag',
+          Flag: 'RED',
+          Scope: 'Track',
+        },
+      },
+    };
+    const result = parseRaceControlMessages(raw);
+    expect(result?.message).toBe('RED FLAG');
+    expect(result?.utc).toBe('2025-05-25T13:05:00Z');
+  });
+
+  it('handles missing/empty Messages', () => {
+    expect(parseRaceControlMessages({})).toBeNull();
+    expect(parseRaceControlMessages({ Messages: {} })).toBeNull();
+  });
+
+  it('parses RacingNumber field', () => {
+    const raw = {
+      Messages: {
+        '0': {
+          Utc: '2025-05-25T13:10:00Z',
+          Message: 'TRACK LIMITS - Loss of track limits at Turn 4',
+          Category: 'Other',
+          Scope: 'Driver',
+          RacingNumber: '44',
+        },
+      },
+    };
+    const result = parseRaceControlMessages(raw);
+    expect(result?.racingNumber).toBe('44');
+    expect(result?.scope).toBe('Driver');
   });
 });

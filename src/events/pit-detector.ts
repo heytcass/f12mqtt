@@ -20,8 +20,9 @@ export function detectPitStops(
     }
 
     const driver = curr.drivers[driverNum];
+    const pitLaneTime = curr.pitLaneTimes[driverNum];
 
-    events.push({
+    const event: PitStopEvent = {
       type: 'pit_stop',
       timestamp: curr.timestamp,
       driverNumber: driverNum,
@@ -29,7 +30,14 @@ export function detectPitStops(
       teamColor: driver?.teamColor ?? 'FFFFFF',
       newCompound: currStint.compound,
       stintNumber: currStint.stintNumber,
-    });
+    };
+
+    if (pitLaneTime) {
+      event.pitLaneDuration = pitLaneTime.duration;
+      event.pitLap = pitLaneTime.lap;
+    }
+
+    events.push(event);
   }
 
   return events;

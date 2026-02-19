@@ -171,7 +171,7 @@ export function latestOvertakeEntity(prefix: string): HADiscoveryPayload {
 export function latestPitStopEntity(prefix: string): HADiscoveryPayload {
   return sensorPayload('latest_pit_stop', 'F1 Latest Pit Stop', `${prefix}/event/pit_stop`, {
     icon: 'mdi:wrench',
-    valueTemplate: '{{ value_json.abbreviation }} {{ value_json.newCompound }}',
+    valueTemplate: '{{ value_json.abbreviation }} {{ value_json.newCompound }}{% if value_json.pitLaneDuration %} {{ value_json.pitLaneDuration }}s{% endif %}',
     jsonAttributesTopic: `${prefix}/event/pit_stop`,
     availabilityTopic: `${prefix}/status`,
   });
@@ -184,6 +184,20 @@ export function playbackStatusEntity(prefix: string): HADiscoveryPayload {
     jsonAttributesTopic: `${prefix}/playback/state`,
     availabilityTopic: `${prefix}/status`,
   });
+}
+
+export function raceControlEntity(prefix: string): HADiscoveryPayload {
+  return sensorPayload(
+    'race_control',
+    'F1 Race Control',
+    `${prefix}/session/race_control`,
+    {
+      icon: 'mdi:message-alert',
+      valueTemplate: '{{ value_json.message }}',
+      jsonAttributesTopic: `${prefix}/session/race_control`,
+      availabilityTopic: `${prefix}/status`,
+    },
+  );
 }
 
 // --- Persistent entities (always registered) ---
@@ -248,6 +262,7 @@ export function ephemeralEntities(
     latestOvertakeEntity,
     latestPitStopEntity,
     playbackStatusEntity,
+    raceControlEntity,
   ].map((fn) => ({
     topic: discoveryTopic(fn(prefix).unique_id.replace('f12mqtt_', '')),
     payload: fn(prefix),

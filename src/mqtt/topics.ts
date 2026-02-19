@@ -15,6 +15,7 @@ export const sessionFlag = (p: string) => `${p}/session/flag`;
 export const sessionLeader = (p: string) => `${p}/session/leader`;
 export const sessionLap = (p: string) => `${p}/session/lap`;
 export const sessionWeather = (p: string) => `${p}/session/weather`;
+export const sessionRaceControl = (p: string) => `${p}/session/race_control`;
 
 // --- Driver topics ---
 export const driverPosition = (p: string, num: string) =>

@@ -623,6 +623,37 @@ describe('detectPitStops', () => {
     const events = detectPitStops(state, state);
     expect(events).toHaveLength(0);
   });
+
+  it('enriches pit stop event with pit lane duration when available', () => {
+    const prev = makeState({
+      stints: { '1': { driverNumber: '1', stintNumber: 0, compound: 'SOFT', tyreAge: 12, new: true } },
+      drivers: { '1': { driverNumber: '1', abbreviation: 'VER', firstName: 'Max', lastName: 'Verstappen', teamName: 'Red Bull', teamColor: '4781D7', countryCode: 'NED' } },
+    });
+    const curr = makeState({
+      stints: { '1': { driverNumber: '1', stintNumber: 1, compound: 'HARD', tyreAge: 0, new: true } },
+      drivers: prev.drivers,
+      pitLaneTimes: { '1': { driverNumber: '1', duration: '25.3', lap: '15' } },
+    });
+    const events = detectPitStops(prev, curr);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.pitLaneDuration).toBe('25.3');
+    expect(events[0]?.pitLap).toBe('15');
+  });
+
+  it('omits pit lane duration when not available', () => {
+    const prev = makeState({
+      stints: { '1': { driverNumber: '1', stintNumber: 0, compound: 'SOFT', tyreAge: 12, new: true } },
+      drivers: { '1': { driverNumber: '1', abbreviation: 'VER', firstName: 'Max', lastName: 'Verstappen', teamName: 'Red Bull', teamColor: '4781D7', countryCode: 'NED' } },
+    });
+    const curr = makeState({
+      stints: { '1': { driverNumber: '1', stintNumber: 1, compound: 'HARD', tyreAge: 0, new: true } },
+      drivers: prev.drivers,
+    });
+    const events = detectPitStops(prev, curr);
+    expect(events).toHaveLength(1);
+    expect(events[0]?.pitLaneDuration).toBeUndefined();
+    expect(events[0]?.pitLap).toBeUndefined();
+  });
 });
 
 // ─── Weather Detector ────────────────────────────────────────────

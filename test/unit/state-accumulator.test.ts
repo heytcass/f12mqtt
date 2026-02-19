@@ -243,4 +243,110 @@ describe('StateAccumulator', () => {
       expect(acc.getState().trackStatus).toEqual(before.trackStatus);
     });
   });
+
+  describe('PitLaneTimeCollection', () => {
+    it('stores pit lane times by driver number', () => {
+      acc.applyMessage('PitLaneTimeCollection', {
+        PitTimes: {
+          '1': { RacingNumber: '1', Duration: '25.3', Lap: '15' },
+        },
+      });
+      expect(acc.getState().pitLaneTimes['1']).toEqual({
+        driverNumber: '1',
+        duration: '25.3',
+        lap: '15',
+      });
+    });
+
+    it('updates existing pit lane times', () => {
+      acc.applyMessage('PitLaneTimeCollection', {
+        PitTimes: { '1': { RacingNumber: '1', Duration: '25.3', Lap: '15' } },
+      });
+      acc.applyMessage('PitLaneTimeCollection', {
+        PitTimes: { '1': { RacingNumber: '1', Duration: '24.1', Lap: '30' } },
+      });
+      expect(acc.getState().pitLaneTimes['1']?.duration).toBe('24.1');
+    });
+
+    it('ignores messages without PitTimes', () => {
+      acc.applyMessage('PitLaneTimeCollection', {});
+      expect(Object.keys(acc.getState().pitLaneTimes)).toHaveLength(0);
+    });
+  });
+
+  describe('TopThree', () => {
+    it('stores top three entries', () => {
+      acc.applyMessage('TopThree', {
+        Lines: [
+          { Position: '1', RacingNumber: '12', Tla: 'ANT', TeamColour: '00D7B6', LapTime: '1:32.803', DiffToLeader: '' },
+          { Position: '2', RacingNumber: '81', Tla: 'PIA', TeamColour: 'F47600', LapTime: '1:32.861', DiffToLeader: '+0.058' },
+        ],
+        Withheld: false,
+      });
+      const topThree = acc.getState().topThree;
+      expect(topThree).toHaveLength(2);
+      expect(topThree[0]?.abbreviation).toBe('ANT');
+      expect(topThree[1]?.gapToLeader).toBe('+0.058');
+    });
+
+    it('replaces top three on update', () => {
+      acc.applyMessage('TopThree', {
+        Lines: [
+          { Position: '1', RacingNumber: '12', Tla: 'ANT', TeamColour: '00D7B6', LapTime: '1:32.0', DiffToLeader: '' },
+        ],
+      });
+      acc.applyMessage('TopThree', {
+        Lines: [
+          { Position: '1', RacingNumber: '81', Tla: 'PIA', TeamColour: 'F47600', LapTime: '1:31.0', DiffToLeader: '' },
+        ],
+      });
+      expect(acc.getState().topThree).toHaveLength(1);
+      expect(acc.getState().topThree[0]?.abbreviation).toBe('PIA');
+    });
+
+    it('clears top three when withheld', () => {
+      acc.applyMessage('TopThree', {
+        Lines: [
+          { Position: '1', RacingNumber: '12', Tla: 'ANT', TeamColour: '00D7B6', LapTime: '1:32.0', DiffToLeader: '' },
+        ],
+      });
+      acc.applyMessage('TopThree', { Withheld: true });
+      expect(acc.getState().topThree).toHaveLength(0);
+    });
+  });
+
+  describe('RaceControlMessages', () => {
+    it('stores the latest race control message', () => {
+      acc.applyMessage('RaceControlMessages', {
+        Messages: {
+          '0': { Utc: '2026-02-19T07:00:00', Category: 'Flag', Flag: 'GREEN', Scope: 'Track', Message: 'GREEN LIGHT - PIT EXIT OPEN' },
+        },
+      });
+      const rcm = acc.getState().latestRaceControlMessage;
+      expect(rcm).not.toBeNull();
+      expect(rcm?.message).toBe('GREEN LIGHT - PIT EXIT OPEN');
+      expect(rcm?.scope).toBe('Track');
+      expect(rcm?.flag).toBe('GREEN');
+    });
+
+    it('updates to the latest message from multiple keys', () => {
+      acc.applyMessage('RaceControlMessages', {
+        Messages: {
+          '0': { Utc: '2026-02-19T07:00:00', Message: 'FIRST', Category: 'Other' },
+          '1': { Utc: '2026-02-19T07:01:00', Message: 'SECOND', Category: 'Flag', Scope: 'Sector', Sector: 2 },
+        },
+      });
+      const rcm = acc.getState().latestRaceControlMessage;
+      expect(rcm?.message).toBe('SECOND');
+      expect(rcm?.sector).toBe(2);
+    });
+
+    it('preserves previous RCM when new message is empty', () => {
+      acc.applyMessage('RaceControlMessages', {
+        Messages: { '0': { Utc: '2026-02-19T07:00:00', Message: 'HELLO', Category: 'Other' } },
+      });
+      acc.applyMessage('RaceControlMessages', { Messages: {} });
+      expect(acc.getState().latestRaceControlMessage?.message).toBe('HELLO');
+    });
+  });
 });

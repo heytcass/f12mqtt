@@ -6,10 +6,13 @@ import {
   flagNotification,
   overtakeNotification,
   pitStopNotification,
+  topThreeApp,
   awtrixCustomAppTopic,
   awtrixNotifyTopic,
 } from '../../src/mqtt/awtrix.js';
+import type { AwtrixTextFragment } from '../../src/mqtt/awtrix.js';
 import type { FlagChangeEvent, OvertakeEvent, PitStopEvent } from '../../src/events/types.js';
+import type { TopThreeEntry } from '../../src/data/types.js';
 
 describe('AWTRIX payloads', () => {
   describe('flagApp', () => {
@@ -116,6 +119,67 @@ describe('AWTRIX payloads', () => {
       expect(text[0]).toEqual({ t: 'PIT ', c: 'FFFFFF' });
       expect(text[1]).toEqual({ t: 'VER', c: '3671C6' });
       expect(text[2]).toEqual({ t: ' HARD', c: 'AAAAAA' });
+    });
+  });
+
+  describe('topThreeApp', () => {
+    it('builds top three app with colored abbreviations', () => {
+      const topThree: TopThreeEntry[] = [
+        { position: 1, driverNumber: '12', abbreviation: 'ANT', teamColor: '00D7B6', lapTime: '1:32.803', gapToLeader: '' },
+        { position: 2, driverNumber: '81', abbreviation: 'PIA', teamColor: 'F47600', lapTime: '1:32.861', gapToLeader: '+0.058' },
+        { position: 3, driverNumber: '3', abbreviation: 'VER', teamColor: '4781D7', lapTime: '1:33.162', gapToLeader: '+0.359' },
+      ];
+      const result = topThreeApp(topThree);
+      const text = result.text as AwtrixTextFragment[];
+      expect(text).toHaveLength(8); // P1 ANT space P2 PIA space P3 VER
+      expect(text[0]).toEqual({ t: 'P1 ', c: 'FFFFFF' });
+      expect(text[1]).toEqual({ t: 'ANT', c: '00D7B6' });
+      expect(text[3]).toEqual({ t: 'P2 ', c: 'FFFFFF' });
+      expect(text[4]).toEqual({ t: 'PIA', c: 'F47600' });
+    });
+
+    it('handles single entry', () => {
+      const topThree: TopThreeEntry[] = [
+        { position: 1, driverNumber: '12', abbreviation: 'ANT', teamColor: '00D7B6', lapTime: '1:32.0', gapToLeader: '' },
+      ];
+      const result = topThreeApp(topThree);
+      const text = result.text as AwtrixTextFragment[];
+      expect(text).toHaveLength(2); // P1 ANT
+    });
+  });
+
+  describe('pitStopNotification with duration', () => {
+    it('includes pit lane duration when available', () => {
+      const event: PitStopEvent = {
+        type: 'pit_stop',
+        timestamp: '2025-01-01T00:00:00Z',
+        driverNumber: '1',
+        abbreviation: 'VER',
+        teamColor: '4781D7',
+        newCompound: 'HARD',
+        stintNumber: 1,
+        pitLaneDuration: '25.3',
+        pitLap: '15',
+      };
+      const result = pitStopNotification(event);
+      const text = result.text as AwtrixTextFragment[];
+      expect(text).toHaveLength(4);
+      expect(text[3]).toEqual({ t: ' 25.3s', c: 'AAAAAA' });
+    });
+
+    it('omits duration when not available', () => {
+      const event: PitStopEvent = {
+        type: 'pit_stop',
+        timestamp: '2025-01-01T00:00:00Z',
+        driverNumber: '1',
+        abbreviation: 'VER',
+        teamColor: '4781D7',
+        newCompound: 'HARD',
+        stintNumber: 1,
+      };
+      const result = pitStopNotification(event);
+      const text = result.text as AwtrixTextFragment[];
+      expect(text).toHaveLength(3);
     });
   });
 

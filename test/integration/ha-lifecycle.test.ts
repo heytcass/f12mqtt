@@ -89,8 +89,8 @@ describe('HA Discovery Lifecycle', () => {
       .filter((c) => c.topic.startsWith('homeassistant/'))
       .map((c) => c.topic);
 
-    // Should have ephemeral entities: 8 base + 3 per driver × 1 favorite = 11
-    expect(ephemeralTopics).toHaveLength(11);
+    // Should have ephemeral entities: 9 base + 3 per driver × 1 favorite = 12
+    expect(ephemeralTopics).toHaveLength(12);
     expect(ephemeralTopics).toContain(
       'homeassistant/sensor/f12mqtt/session_status/config',
     );
@@ -168,14 +168,14 @@ describe('HA Discovery Lifecycle', () => {
     // === Step 4: Session 1 ends ===
     publisher.deregisterSessionEntities();
 
-    // All 11 ephemeral discovery topics should be cleared (empty payload)
+    // All 12 ephemeral discovery topics should be cleared (empty payload)
     const clearCalls = mqtt.calls.filter(
       (c) =>
         c.topic.startsWith('homeassistant/') &&
         c.payload === '' &&
         c.retain === true,
     );
-    expect(clearCalls).toHaveLength(11);
+    expect(clearCalls).toHaveLength(12);
 
     // Session status should be "finished"
     const finishedCalls = mqtt.calls.filter(
@@ -201,7 +201,7 @@ describe('HA Discovery Lifecycle', () => {
     const session2Ephemeral = mqtt.calls
       .filter((c) => c.topic.startsWith('homeassistant/'))
       .map((c) => c.topic);
-    expect(session2Ephemeral).toHaveLength(11); // same count as session 1
+    expect(session2Ephemeral).toHaveLength(12); // same count as session 1
 
     // State updates should work again
     const msg = pipeline.processMessage({
