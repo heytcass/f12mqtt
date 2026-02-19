@@ -2,7 +2,7 @@
  * AWTRIX 3 payload builders for custom apps and notifications.
  */
 
-import type { TrackFlag } from '../data/types.js';
+import type { TopThreeEntry, TrackFlag } from '../data/types.js';
 import type {
   FlagChangeEvent,
   OvertakeEvent,
@@ -131,10 +131,26 @@ export function pitStopNotification(event: PitStopEvent): AwtrixNotifyPayload {
     { t: event.abbreviation, c: event.teamColor },
     { t: ` ${event.newCompound}`, c: 'AAAAAA' },
   ];
+  if (event.pitLaneDuration) {
+    text.push({ t: ` ${event.pitLaneDuration}s`, c: 'AAAAAA' });
+  }
   return {
     text,
     duration: 3,
   };
+}
+
+/** Build top three custom app payload */
+export function topThreeApp(topThree: TopThreeEntry[]): AwtrixAppPayload {
+  const text: AwtrixTextFragment[] = [];
+  for (const entry of topThree) {
+    if (text.length > 0) {
+      text.push({ t: ' ', c: 'FFFFFF' });
+    }
+    text.push({ t: `P${entry.position} `, c: 'FFFFFF' });
+    text.push({ t: entry.abbreviation, c: entry.teamColor });
+  }
+  return { text };
 }
 
 /** AWTRIX MQTT topic builders */

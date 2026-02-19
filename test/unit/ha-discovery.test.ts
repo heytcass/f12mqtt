@@ -70,13 +70,21 @@ describe('HA Discovery', () => {
   describe('ephemeralEntities', () => {
     it('generates base entities + per-driver entities', () => {
       const entities = ephemeralEntities(PREFIX, ['1', '44']);
-      // 8 base + 3 per driver × 2 drivers = 14
-      expect(entities).toHaveLength(14);
+      // 9 base + 3 per driver × 2 drivers = 15
+      expect(entities).toHaveLength(15);
     });
 
     it('generates base entities only when no favorites', () => {
       const entities = ephemeralEntities(PREFIX, []);
-      expect(entities).toHaveLength(8);
+      expect(entities).toHaveLength(9);
+    });
+
+    it('includes race control entity', () => {
+      const entities = ephemeralEntities('f12mqtt', []);
+      const rcEntity = entities.find(e => e.topic.includes('race_control'));
+      expect(rcEntity).toBeDefined();
+      expect(rcEntity!.payload.name).toBe('F1 Race Control');
+      expect(rcEntity!.payload.icon).toBe('mdi:message-alert');
     });
   });
 

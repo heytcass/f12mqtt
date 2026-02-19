@@ -94,6 +94,14 @@ export class MqttPublisher {
       this.mqtt.publish(topics.sessionInfo(p), state.sessionInfo, true);
     }
 
+    if (state.latestRaceControlMessage) {
+      this.mqtt.publish(
+        topics.sessionRaceControl(p),
+        state.latestRaceControlMessage,
+        true,
+      );
+    }
+
     // Find leader
     const leader = Object.values(state.timing).find((t) => t.position === 1);
     if (leader) {
@@ -224,6 +232,14 @@ export class MqttPublisher {
           timing.position === 1 ? '' : timing.gapToLeader,
           driver.teamColor,
         ),
+      );
+    }
+
+    // Top three app
+    if (state.topThree.length > 0) {
+      this.mqtt.publish(
+        awtrix.awtrixCustomAppTopic(ap, 'f1top3'),
+        awtrix.topThreeApp(state.topThree),
       );
     }
   }

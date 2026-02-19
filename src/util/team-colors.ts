@@ -1,19 +1,19 @@
 /**
- * 2025 F1 team colors (hex without #).
+ * 2026 F1 team colors (hex without #).
  * Updated each season. Key is the team name as returned by SignalR DriverList.
  */
 export const TEAM_COLORS: Record<string, string> = {
-  'Red Bull Racing': '3671C6',
-  McLaren: 'FF8000',
-  Ferrari: 'E8002D',
-  Mercedes: '27F4D2',
+  'Red Bull Racing': '4781D7',
+  McLaren: 'F47600',
+  Ferrari: 'ED1131',
+  Mercedes: '00D7B6',
   'Aston Martin': '229971',
-  Alpine: 'FF87BC',
-  Williams: '64C4FF',
-  'RB F1 Team': '6692FF',
-  'Kick Sauber': '52E252',
-  Haas: 'B6BABD',
-  Cadillac: '1E4D2B',
+  Alpine: '00A1E8',
+  Williams: '1868DB',
+  'Racing Bulls': '6C98FF',
+  Audi: 'F50537',
+  'Haas F1 Team': '9C9FA2',
+  Cadillac: '909090',
 };
 
 /** Fallback color if team not found */

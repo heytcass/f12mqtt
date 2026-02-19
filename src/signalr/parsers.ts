@@ -12,6 +12,9 @@ import type {
   TrackFlag,
   LapCount,
   WeatherData,
+  PitLaneTime,
+  TopThreeEntry,
+  RaceControlMessage,
 } from '../data/types.js';
 import type {
   RawDriverList,
@@ -21,6 +24,9 @@ import type {
   RawSessionInfo,
   RawLapCount,
   RawWeatherData,
+  RawPitLaneTimeCollection,
+  RawTopThree,
+  RawRaceControlMessage,
 } from './types.js';
 import { FLAG_NAMES } from '../util/constants.js';
 import { getTeamColor } from '../util/team-colors.js';
@@ -168,4 +174,62 @@ export function parseWeatherData(raw: RawWeatherData): Partial<WeatherData> {
     result.windDirection = parseFloat(raw.WindDirection);
   if (raw.Pressure !== undefined) result.pressure = parseFloat(raw.Pressure);
   return result;
+}
+
+export function parsePitLaneTimeCollection(
+  raw: RawPitLaneTimeCollection,
+): Record<string, PitLaneTime> {
+  const result: Record<string, PitLaneTime> = {};
+  if (!raw.PitTimes) return result;
+
+  for (const [num, entry] of Object.entries(raw.PitTimes)) {
+    const driverNumber = entry.RacingNumber ?? num;
+    if (entry.Duration === undefined) continue;
+    result[driverNumber] = {
+      driverNumber,
+      duration: entry.Duration,
+      lap: entry.Lap ?? '',
+    };
+  }
+  return result;
+}
+
+export function parseTopThree(raw: RawTopThree): TopThreeEntry[] {
+  if (raw.Withheld || !raw.Lines) return [];
+
+  return raw.Lines.filter((entry) => entry.RacingNumber && entry.Tla)
+    .map((entry) => ({
+      position: parseInt(entry.Position ?? '0', 10),
+      driverNumber: entry.RacingNumber!,
+      abbreviation: entry.Tla!,
+      teamColor: entry.TeamColour ?? 'FFFFFF',
+      lapTime: entry.LapTime ?? '',
+      gapToLeader: entry.DiffToLeader ?? '',
+    }))
+    .sort((a, b) => a.position - b.position);
+}
+
+export function parseRaceControlMessages(
+  raw: RawRaceControlMessage,
+): RaceControlMessage | null {
+  if (!raw.Messages) return null;
+
+  const keys = Object.keys(raw.Messages)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const latestKey = keys[keys.length - 1];
+  if (latestKey === undefined) return null;
+
+  const entry = raw.Messages[String(latestKey)];
+  if (!entry?.Message) return null;
+
+  return {
+    utc: entry.Utc ?? '',
+    message: entry.Message,
+    category: entry.Category ?? '',
+    flag: entry.Flag,
+    scope: entry.Scope,
+    sector: entry.Sector,
+    racingNumber: entry.RacingNumber,
+  };
 }

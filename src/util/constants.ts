@@ -50,6 +50,8 @@ export const SIGNALR_TOPICS = [
   'LapCount',
   'WeatherData',
   'TimingAppData',
+  'PitLaneTimeCollection',
+  'TopThree',
   'ExtrapolatedClock',
   'Heartbeat',
   'CarData.z',

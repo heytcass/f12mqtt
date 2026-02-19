@@ -4,7 +4,7 @@
  * verifies the publisher calls MQTT with correct topics and payloads.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SignalRPipeline } from '../../src/signalr/pipeline.js';
 import { MqttPublisher } from '../../src/mqtt/publisher.js';
 import type { F1MqttClient } from '../../src/mqtt/client.js';
@@ -144,7 +144,7 @@ describe('Pipeline → Publisher integration', () => {
     mqtt.calls.length = 0;
 
     // 4. Feed initial positions + lap count
-    const msg3 = pipeline.processMessage({
+    pipeline.processMessage({
       topic: 'TimingData',
       data: {
         Lines: {
@@ -364,6 +364,211 @@ describe('Pipeline → Publisher integration', () => {
       (c) => c.topic === 'f12mqtt/driver/1/status',
     );
     expect(statusCall!.payload).toBe('pit');
+  });
+
+  it('publishes race control messages to MQTT', () => {
+    publisher.registerSessionEntities();
+    mqtt.calls.length = 0;
+
+    // Feed RaceControlMessages through pipeline
+    const msg = pipeline.processMessage({
+      topic: 'RaceControlMessages',
+      data: {
+        Messages: {
+          '0': {
+            Utc: '2025-07-06T14:05:00Z',
+            Category: 'Flag',
+            Flag: 'RED',
+            Scope: 'Track',
+            Message: 'RED FLAG',
+          },
+        },
+      },
+      timestamp: '2025-07-06T14:05:00Z',
+    });
+    publisher.publishState(msg.state);
+
+    // Verify RCM published to session/race_control topic
+    const rcmCall = mqtt.calls.find(
+      (c) => c.topic === 'f12mqtt/session/race_control',
+    );
+    expect(rcmCall).toBeDefined();
+    expect(rcmCall!.payload).toHaveProperty('message', 'RED FLAG');
+    expect(rcmCall!.payload).toHaveProperty('category', 'Flag');
+    expect(rcmCall!.payload).toHaveProperty('flag', 'RED');
+    expect(rcmCall!.payload).toHaveProperty('scope', 'Track');
+    expect(rcmCall!.retain).toBe(true);
+  });
+
+  it('publishes race control message with sector info', () => {
+    publisher.registerSessionEntities();
+    mqtt.calls.length = 0;
+
+    const msg = pipeline.processMessage({
+      topic: 'RaceControlMessages',
+      data: {
+        Messages: {
+          '0': {
+            Utc: '2025-07-06T14:06:00Z',
+            Category: 'Flag',
+            Flag: 'YELLOW',
+            Scope: 'Sector',
+            Sector: 2,
+            Message: 'YELLOW IN TRACK SECTOR 2',
+          },
+        },
+      },
+      timestamp: '2025-07-06T14:06:00Z',
+    });
+    publisher.publishState(msg.state);
+
+    const rcmCall = mqtt.calls.find(
+      (c) => c.topic === 'f12mqtt/session/race_control',
+    );
+    expect(rcmCall).toBeDefined();
+    expect(rcmCall!.payload).toHaveProperty('scope', 'Sector');
+    expect(rcmCall!.payload).toHaveProperty('sector', 2);
+    expect(rcmCall!.payload).toHaveProperty('message', 'YELLOW IN TRACK SECTOR 2');
+  });
+
+  it('publishes TopThree AWTRIX app when data is available', () => {
+    publisher.registerSessionEntities();
+    mqtt.calls.length = 0;
+
+    // Feed TopThree data through pipeline
+    const msg = pipeline.processMessage({
+      topic: 'TopThree',
+      data: {
+        Lines: [
+          {
+            Position: '1',
+            RacingNumber: '12',
+            Tla: 'ANT',
+            TeamColour: '00D7B6',
+            LapTime: '1:32.803',
+            DiffToLeader: '',
+          },
+          {
+            Position: '2',
+            RacingNumber: '81',
+            Tla: 'PIA',
+            TeamColour: 'F47600',
+            LapTime: '1:32.861',
+            DiffToLeader: '+0.058',
+          },
+          {
+            Position: '3',
+            RacingNumber: '3',
+            Tla: 'VER',
+            TeamColour: '4781D7',
+            LapTime: '1:33.162',
+            DiffToLeader: '+0.359',
+          },
+        ],
+        Withheld: false,
+      },
+      timestamp: '2025-07-06T14:01:00Z',
+    });
+    publisher.publishState(msg.state);
+
+    // Verify AWTRIX f1top3 app published
+    const top3Call = mqtt.calls.find(
+      (c) => c.topic === 'awtrix_abc/custom/f1top3',
+    );
+    expect(top3Call).toBeDefined();
+    const text = (top3Call!.payload as { text: Array<{ t: string; c: string }> }).text;
+    // P1 ANT space P2 PIA space P3 VER = 8 fragments
+    expect(text).toHaveLength(8);
+    expect(text[0]).toEqual({ t: 'P1 ', c: 'FFFFFF' });
+    expect(text[1]).toEqual({ t: 'ANT', c: '00D7B6' });
+    expect(text[3]).toEqual({ t: 'P2 ', c: 'FFFFFF' });
+    expect(text[4]).toEqual({ t: 'PIA', c: 'F47600' });
+    expect(text[6]).toEqual({ t: 'P3 ', c: 'FFFFFF' });
+    expect(text[7]).toEqual({ t: 'VER', c: '4781D7' });
+  });
+
+  it('enriches pit stop event with pit lane duration', () => {
+    publisher.registerSessionEntities();
+
+    // Feed driver list first
+    pipeline.processMessage({
+      topic: 'DriverList',
+      data: {
+        '1': {
+          RacingNumber: '1',
+          Tla: 'VER',
+          TeamName: 'Red Bull Racing',
+          TeamColour: '4781D7',
+        },
+      },
+      timestamp: '2025-07-06T14:00:00Z',
+    });
+
+    // Initial stint
+    pipeline.processMessage({
+      topic: 'TimingAppData',
+      data: {
+        Lines: {
+          '1': {
+            Stints: {
+              '0': { Compound: 'SOFT', New: 'true', TotalLaps: 12 },
+            },
+          },
+        },
+      },
+      timestamp: '2025-07-06T14:00:01Z',
+    });
+
+    // Feed PitLaneTimeCollection before the stint change
+    pipeline.processMessage({
+      topic: 'PitLaneTimeCollection',
+      data: {
+        PitTimes: {
+          '1': { RacingNumber: '1', Duration: '25.3', Lap: '15' },
+        },
+      },
+      timestamp: '2025-07-06T14:12:00Z',
+    });
+
+    mqtt.calls.length = 0;
+
+    // Stint change triggers pit stop event
+    const msg = pipeline.processMessage({
+      topic: 'TimingAppData',
+      data: {
+        Lines: {
+          '1': {
+            Stints: {
+              '0': { Compound: 'SOFT', New: 'true', TotalLaps: 12 },
+              '1': { Compound: 'HARD', New: 'true', TotalLaps: 0 },
+            },
+          },
+        },
+      },
+      timestamp: '2025-07-06T14:12:01Z',
+    });
+    publisher.publishState(msg.state);
+    publisher.publishEvents(msg.events);
+
+    // Verify pit stop event has duration
+    const pitCall = mqtt.calls.find(
+      (c) => c.topic === 'f12mqtt/event/pit_stop',
+    );
+    expect(pitCall).toBeDefined();
+    expect(pitCall!.payload).toHaveProperty('abbreviation', 'VER');
+    expect(pitCall!.payload).toHaveProperty('newCompound', 'HARD');
+    expect(pitCall!.payload).toHaveProperty('pitLaneDuration', '25.3');
+    expect(pitCall!.payload).toHaveProperty('pitLap', '15');
+
+    // Verify AWTRIX notification includes duration
+    const awtrixNotif = mqtt.calls.find(
+      (c) => c.topic === 'awtrix_abc/notify',
+    );
+    expect(awtrixNotif).toBeDefined();
+    const notifText = (awtrixNotif!.payload as { text: Array<{ t: string; c: string }> }).text;
+    // PIT VER HARD 25.3s = 4 fragments
+    expect(notifText).toHaveLength(4);
+    expect(notifText[3]).toEqual({ t: ' 25.3s', c: 'AAAAAA' });
   });
 
   it('deregisters ephemeral entities on session end', () => {

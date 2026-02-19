@@ -17,6 +17,10 @@ describe('MQTT topic builders', () => {
     expect(topics.sessionInfo(p)).toBe('f12mqtt/session/info');
   });
 
+  it('builds session race control topic', () => {
+    expect(topics.sessionRaceControl(p)).toBe('f12mqtt/session/race_control');
+  });
+
   it('builds driver topics with number', () => {
     expect(topics.driverPosition(p, '1')).toBe('f12mqtt/driver/1/position');
     expect(topics.driverGap(p, '44')).toBe('f12mqtt/driver/44/gap');

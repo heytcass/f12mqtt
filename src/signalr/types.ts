@@ -92,6 +92,40 @@ export interface RawWeatherData {
   Pressure?: string;
 }
 
+/** PitLaneTimeCollection topic — pit lane time data keyed by driver number */
+export interface RawPitLaneTimeEntry {
+  RacingNumber?: string;
+  Duration?: string; // pit lane duration in seconds, e.g. "25.3"
+  Lap?: string; // lap number of the pit stop
+}
+
+export interface RawPitLaneTimeCollection {
+  PitTimes?: Record<string, RawPitLaneTimeEntry>;
+}
+
+/** TopThree topic — top 3 drivers with timing */
+export interface RawTopThreeEntry {
+  Position?: string;
+  ShowPosition?: boolean;
+  RacingNumber?: string;
+  Tla?: string;
+  BroadcastName?: string;
+  FullName?: string;
+  Team?: string;
+  TeamColour?: string;
+  LapTime?: string;
+  LapState?: number;
+  DiffToAhead?: string;
+  DiffToLeader?: string;
+  OverallFastest?: boolean;
+  PersonalFastest?: boolean;
+}
+
+export interface RawTopThree {
+  Lines?: RawTopThreeEntry[];
+  Withheld?: boolean;
+}
+
 /** RaceControlMessages topic */
 export interface RawRaceControlMessage {
   Messages?: Record<
@@ -101,6 +135,9 @@ export interface RawRaceControlMessage {
       Message?: string;
       Category?: string;
       Flag?: string;
+      Scope?: string; // "Track", "Sector", "Driver"
+      Sector?: number; // sector number when Scope is "Sector"
+      RacingNumber?: string; // driver number when relevant
     }
   >;
 }

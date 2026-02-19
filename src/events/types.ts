@@ -33,6 +33,8 @@ export interface PitStopEvent {
   teamColor: string;
   newCompound: string;
   stintNumber: number;
+  pitLaneDuration?: string; // from PitLaneTimeCollection, e.g. "25.3"
+  pitLap?: string; // lap of the pit stop
 }
 
 export interface WeatherChangeEvent {
