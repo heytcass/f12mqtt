@@ -1,15 +1,25 @@
+import { Flag, ArrowRightLeft, Wrench, CloudRain, CircleAlert } from 'lucide-react';
 import type { F1Event } from '../hooks/useWebSocket';
+import type { ComponentType } from 'react';
 
 interface EventFeedProps {
   events: F1Event[];
 }
 
-const EVENT_STYLES: Record<string, { bg: string; label: string }> = {
-  flag_change: { bg: 'bg-yellow-900/50 border-yellow-700', label: 'FLAG' },
-  overtake: { bg: 'bg-blue-900/50 border-blue-700', label: 'OVERTAKE' },
-  pit_stop: { bg: 'bg-orange-900/50 border-orange-700', label: 'PIT' },
-  weather_change: { bg: 'bg-cyan-900/50 border-cyan-700', label: 'WEATHER' },
+interface EventStyle {
+  bg: string;
+  icon: ComponentType<{ size?: number; className?: string }>;
+  label: string;
+}
+
+const EVENT_STYLES: Record<string, EventStyle> = {
+  flag_change: { bg: 'bg-yellow-900/50 border-yellow-700', icon: Flag, label: 'FLAG' },
+  overtake: { bg: 'bg-blue-900/50 border-blue-700', icon: ArrowRightLeft, label: 'OVERTAKE' },
+  pit_stop: { bg: 'bg-orange-900/50 border-orange-700', icon: Wrench, label: 'PIT' },
+  weather_change: { bg: 'bg-cyan-900/50 border-cyan-700', icon: CloudRain, label: 'WEATHER' },
 };
+
+const DEFAULT_STYLE: EventStyle = { bg: 'bg-gray-800 border-gray-700', icon: CircleAlert, label: 'EVENT' };
 
 function formatEvent(event: F1Event): string {
   switch (event.type) {
@@ -35,28 +45,29 @@ export function EventFeed({ events }: EventFeedProps) {
   if (events.length === 0) return null;
 
   return (
-    <div className="space-y-1">
-      <h2 className="text-sm font-medium text-gray-300 mb-2">Events</h2>
-      <div className="space-y-1 max-h-64 overflow-y-auto">
-        {events.map((event, i) => {
-          const style = EVENT_STYLES[event.type] ?? { bg: 'bg-gray-800 border-gray-700', label: event.type.toUpperCase() };
-          return (
-            <div
-              key={`${event.timestamp}-${i}`}
-              className={`${style.bg} border-l-2 rounded-r px-3 py-1.5 flex items-center gap-2`}
-            >
-              <span className="text-xs font-mono text-gray-500 w-16 shrink-0">
-                {formatTime(event.timestamp)}
-              </span>
-              <span className="text-xs font-bold text-gray-400 w-16 shrink-0">
-                {style.label}
-              </span>
-              <span className="text-sm text-gray-200">
-                {formatEvent(event)}
-              </span>
-            </div>
-          );
-        })}
+    <div>
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Events</h2>
+      <div className="bg-gray-900/80 rounded-xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden">
+        <div className="space-y-px max-h-72 overflow-y-auto p-1">
+          {events.map((event, i) => {
+            const style = EVENT_STYLES[event.type] ?? DEFAULT_STYLE;
+            const Icon = style.icon;
+            return (
+              <div
+                key={`${event.timestamp}-${i}`}
+                className={`${style.bg} border-l-2 rounded-lg px-3 py-2 flex items-center gap-3`}
+              >
+                <Icon size={14} className="text-gray-400 shrink-0" />
+                <span className="text-[11px] font-mono text-gray-600 w-16 shrink-0 tabular-nums">
+                  {formatTime(event.timestamp)}
+                </span>
+                <span className="text-sm text-gray-300">
+                  {formatEvent(event)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

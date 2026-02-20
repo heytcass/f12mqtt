@@ -18,6 +18,9 @@ interface AwtrixConfig {
   prefix: string;
 }
 
+const inputClass =
+  'bg-gray-800/70 border border-gray-700/60 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 transition-colors';
+
 export function ConfigPanel({ onClose }: ConfigPanelProps) {
   const { config, loading, saveConfig } = useConfig();
 
@@ -50,25 +53,30 @@ export function ConfigPanel({ onClose }: ConfigPanelProps) {
   if (loading) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in" onClick={onClose}>
+      <div className="bg-gray-900 rounded-2xl border border-gray-800/60 shadow-2xl shadow-black/40 p-6 max-w-md w-full mx-4 space-y-5 animate-slide-up" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
+          <h2 className="text-lg font-bold text-white">Settings</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-white hover:bg-gray-800 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 text-lg"
+          >
+            &times;
+          </button>
         </div>
 
         {/* MQTT */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-gray-300">MQTT Broker</legend>
+          <legend className="text-xs font-semibold uppercase tracking-wider text-gray-500">MQTT Broker</legend>
           <div className="grid grid-cols-3 gap-2">
             <input
-              className="col-span-2 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+              className={`col-span-2 ${inputClass}`}
               placeholder="Host"
               value={mqttForm.host}
               onChange={(e) => setMqttForm({ ...mqttForm, host: e.target.value })}
             />
             <input
-              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+              className={inputClass}
               placeholder="Port"
               type="number"
               value={mqttForm.port}
@@ -77,13 +85,13 @@ export function ConfigPanel({ onClose }: ConfigPanelProps) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input
-              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+              className={inputClass}
               placeholder="Username"
               value={mqttForm.username}
               onChange={(e) => setMqttForm({ ...mqttForm, username: e.target.value })}
             />
             <input
-              className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+              className={inputClass}
               placeholder="Password"
               type="password"
               value={mqttForm.password}
@@ -91,7 +99,7 @@ export function ConfigPanel({ onClose }: ConfigPanelProps) {
             />
           </div>
           <input
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+            className={`w-full ${inputClass}`}
             placeholder="Topic prefix (e.g. f12mqtt)"
             value={mqttForm.prefix}
             onChange={(e) => setMqttForm({ ...mqttForm, prefix: e.target.value })}
@@ -100,19 +108,19 @@ export function ConfigPanel({ onClose }: ConfigPanelProps) {
 
         {/* AWTRIX */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-gray-300">AWTRIX 3</legend>
+          <legend className="text-xs font-semibold uppercase tracking-wider text-gray-500">AWTRIX 3</legend>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={awtrixForm.enabled}
               onChange={(e) => setAwtrixForm({ ...awtrixForm, enabled: e.target.checked })}
-              className="rounded"
+              className="rounded accent-blue-500"
             />
             Enable AWTRIX notifications
           </label>
           {awtrixForm.enabled && (
             <input
-              className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+              className={`w-full ${inputClass}`}
               placeholder="AWTRIX MQTT prefix"
               value={awtrixForm.prefix}
               onChange={(e) => setAwtrixForm({ ...awtrixForm, prefix: e.target.value })}
@@ -122,25 +130,25 @@ export function ConfigPanel({ onClose }: ConfigPanelProps) {
 
         {/* Favorites */}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-gray-300">Favorite Drivers</legend>
+          <legend className="text-xs font-semibold uppercase tracking-wider text-gray-500">Favorite Drivers</legend>
           <input
-            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+            className={`w-full ${inputClass}`}
             placeholder="Driver numbers, comma-separated (e.g. 1, 4, 44)"
             value={favoritesForm}
             onChange={(e) => setFavoritesForm(e.target.value)}
           />
         </fieldset>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-3 border-t border-gray-800/40">
           <button
             onClick={onClose}
-            className="text-sm text-gray-400 hover:text-white px-4 py-1.5 rounded hover:bg-gray-800 transition-colors"
+            className="text-sm text-gray-400 hover:text-gray-200 hover:bg-gray-800/60 px-4 py-2 rounded-lg transition-all duration-150"
           >
             Cancel
           </button>
           <button
             onClick={() => void handleSave()}
-            className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded transition-colors"
+            className="text-sm bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium px-5 py-2 rounded-lg transition-all duration-150 shadow-md shadow-blue-900/30"
           >
             Save
           </button>
