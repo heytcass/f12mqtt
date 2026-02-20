@@ -18,6 +18,8 @@ const FLAG_LABELS: Record<string, string> = {
   chequered: 'Chequered Flag',
 };
 
+const PULSE_FLAGS = new Set(['yellow', 'sc', 'vsc', 'vsc_ending', 'red']);
+
 interface FlagIndicatorProps {
   flag: string;
 }
@@ -28,9 +30,10 @@ export function FlagIndicator({ flag }: FlagIndicatorProps) {
   const bgColor = FLAG_COLORS[flag] ?? 'bg-gray-600';
   const label = FLAG_LABELS[flag] ?? flag;
   const textColor = flag === 'chequered' ? 'text-gray-900' : 'text-white';
+  const pulse = PULSE_FLAGS.has(flag) ? 'animate-flag-pulse' : '';
 
   return (
-    <div className={`${bgColor} ${textColor} text-center py-1.5 text-sm font-bold tracking-wide animate-pulse`}>
+    <div className={`${bgColor} ${textColor} text-center py-2 text-sm font-bold tracking-widest uppercase ${pulse}`}>
       {label}
     </div>
   );

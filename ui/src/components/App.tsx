@@ -18,7 +18,7 @@ export function App() {
 
       <FlagIndicator flag={sessionState?.trackStatus.flag ?? 'green'} />
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-4 space-y-4">
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 pb-12 space-y-6">
         <SessionSelector playbackState={playbackState} />
 
         {playbackState && (
