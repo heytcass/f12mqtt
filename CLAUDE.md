@@ -42,9 +42,6 @@ F1 Live Timing → MQTT Bridge for Home Assistant and AWTRIX 3.
 - Name test files `*.test.ts`
 - Use `describe`/`it`/`expect` from vitest globals
 
-## PATH Note
+## Dev Environment
 
-Node.js 22 is installed via Homebrew keg-only. Prefix commands with:
-```
-export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
-```
+Uses Nix flake + direnv. `cd` into the project to activate the dev shell automatically (Node.js 22, npm, native build tools).
