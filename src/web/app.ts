@@ -16,6 +16,8 @@ import { createChildLogger } from '../util/logger.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import type { SignalRPipeline } from '../signalr/pipeline.js';
+import type { F1SignalRClient } from '../signalr/client.js';
 
 const log = createChildLogger('web');
 
@@ -24,6 +26,12 @@ export interface AppOptions {
   host: string;
   recordingsDir: string;
   dbPath?: string;
+  /** Pre-created ConfigStore — if provided, caller is responsible for lifecycle */
+  configStore?: ConfigStore;
+  /** Live pipeline for broadcasting state over WebSocket */
+  pipeline?: SignalRPipeline;
+  /** SignalR client for connection status */
+  signalRClient?: F1SignalRClient;
 }
 
 export interface App {
@@ -37,7 +45,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
 
   const controller = new PlaybackController();
   const clients = new Set<WebSocket>();
-  const configStore = opts.dbPath ? new ConfigStore(opts.dbPath) : null;
+
+  // Use provided ConfigStore or create one from dbPath
+  const ownedConfigStore =
+    !opts.configStore && opts.dbPath ? new ConfigStore(opts.dbPath) : null;
+  const configStore = opts.configStore ?? ownedConfigStore;
 
   // --- WebSocket: broadcast state/events to connected clients ---
 
@@ -48,6 +60,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
 
       // Send current playback state on connect
       send(socket, { type: 'playback_state', ...controller.getPlaybackState() });
+
+      // Send current live state if pipeline has received data
+      if (opts.pipeline) {
+        const liveState = opts.pipeline.getState();
+        if (liveState.sessionInfo) {
+          send(socket, { type: 'live_update', state: liveState, events: [] });
+        }
+      }
 
       socket.on('message', (raw) => {
         try {
@@ -102,10 +122,27 @@ export async function createApp(opts: AppOptions): Promise<App> {
     broadcast({ type: 'playback_finished' });
   });
 
+  // Wire live pipeline events → WebSocket broadcast
+  if (opts.pipeline) {
+    opts.pipeline.on('update', (data) => {
+      broadcast({ type: 'live_update', state: data.state, events: data.events });
+    });
+    opts.pipeline.on('event', (event) => {
+      broadcast({ type: 'live_event', event });
+    });
+  }
+
   // --- REST API ---
 
   fastify.get('/api/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
+  });
+
+  fastify.get('/api/live/status', async () => {
+    return {
+      connected: opts.signalRClient?.isConnected() ?? false,
+      state: opts.pipeline?.getState() ?? null,
+    };
   });
 
   fastify.get('/api/sessions', async () => {
@@ -235,7 +272,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
     server: fastify.server,
     async close() {
       await fastify.close();
-      configStore?.close();
+      // Only close ConfigStore if we created it (not passed in by caller)
+      ownedConfigStore?.close();
     },
   };
 }
